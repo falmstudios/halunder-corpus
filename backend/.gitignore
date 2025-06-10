@@ -1,0 +1,32 @@
+# Environment variables (WICHTIG: API Keys nicht committen!)
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+env/
+
+# Logs
+*.log
+logs/
+
+# Database exports
+exports/
+*.csv
+
+# System files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# VS Code
+.vscode/
+
+# Backup files
+*.backup
+*.old
