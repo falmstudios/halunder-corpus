@@ -1,5 +1,8 @@
-# Environment variables (WICHTIG: API Keys nicht committen!)
+# Environment variables (KRITISCH!)
 .env
+.env.local
+.env.production
+*.env
 
 # Python
 __pycache__/
