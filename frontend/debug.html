@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Halunder Corpus - Debug Chat</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        .debug-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .debug-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            height: 70vh;
+        }
+
+        .chat-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            border: 1px solid #e0e0e0;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background: #f8f9fa;
+            font-family: monospace;
+            font-size: 14px;
+        }
+
+        .message {
+            margin-bottom: 10px;
+            padding: 8px;
+            border-radius: 4px;
+        }
+
+        .message.user {
+            background: #e3f2fd;
+            text-align: right;
+        }
+
+        .message.assistant {
+            background: #f1f8e9;
+        }
+
+        .message.error {
+            background: #ffebee;
+            color: #c62828;
+        }
+
+        .chat-input-area {
+            display: flex;
+            gap: 10px;
+        }
+
+        .chat-input {
+            flex: 1;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .chat-send {
+            padding: 10px 20px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .chat-send:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        .logs-section {
+            background: white;
+            border-radius: 8px;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .live-logs {
+            flex: 1;
+            background: #1e1e1e;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            padding: 15px;
+            border-radius: 4px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .log-entry {
+            margin-bottom: 3px;
+        }
+
+        .log-info { color: #00ff00; }
+        .log-error { color: #ff4444; }
+        .log-warning { color: #ffaa00; }
+
+        .status-bar {
+            background: #2c3e50;
+            color: white;
+            padding: 15px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+
+        .status-online { background: #27ae60; }
+        .status-offline { background: #e74c3c; }
+
+        .quick-tests {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .btn-quick {
+            padding: 6px 12px;
+            background: #9b59b6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="main-nav">
+        <div class="nav-container">
+            <h1 class="nav-title">Halunder Corpus System</h1>
+            <div class="nav-links">
+                <a href="/" class="nav-link">Textverarbeitung</a>
+                <a href="/review" class="nav-link">Review & Export</a>
+                <a href="/debug" class="nav-link active">Debug</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="status-bar">
+        <div>
+            <span id="api-status" class="status-indicator status-offline"></span>
+            <span id="api-text">API: Überprüfe...</span>
+            <span style="margin-left: 20px;"></span>
+            <span id="llm-status" class="status-indicator status-offline"></span>
+            <span id="llm-text">LLM: Überprüfe...</span>
+        </div>
+        <div>
+            Debug Console - Direkt mit dem LLM chatten
+        </div>
+    </div>
+
+    <div class="debug-container">
+        <div class="debug-grid">
+            <!-- Chat-Bereich -->
+            <div class="chat-section">
+                <h3>💬 LLM Chat</h3>
+                <div class="quick-tests">
+                    <button class="btn-quick" onclick="quickTest('Hallo!')">Hallo Test</button>
+                    <button class="btn-quick" onclick="quickTest('Übersetze: De Damperbeert hid en Kas')">Halunder Test</button>
+                    <button class="btn-quick" onclick="quickTest('Erkläre mir Helgoland in 50 Wörtern')">Helgoland Test</button>
+                    <button class="btn-quick" onclick="clearChat()">Chat leeren</button>
+                </div>
+                
+                <div id="chat-messages" class="chat-messages"></div>
+                
+                <div class="chat-input-area">
+                    <input type="text" id="chat-input" class="chat-input" 
+                           placeholder="Nachricht an das LLM..." 
+                           onkeypress="if(event.key==='Enter') sendMessage()">
+                    <button id="send-btn" class="chat-send" onclick="sendMessage()">Senden</button>
+                </div>
+            </div>
+
+            <!-- Live-Logs -->
+            <div class="logs-section">
+                <h3>📊 Live System-Logs</h3>
+                <div id="live-logs" class="live-logs">
+                    Warte auf System-Aktivität...
+                </div>
+                <button onclick="clearLogs()" class="btn-quick" style="margin-top: 10px;">Logs leeren</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '/api';
+        let chatMessages = [];
+
+        // Chat-Funktionen
+        function addChatMessage(message, sender, isError = false) {
+            const messagesDiv = document.getElementById('chat-messages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${sender}${isError ? ' error' : ''}`;
+            
+            const timestamp = new Date().toLocaleTimeString();
+            messageDiv.innerHTML = `<strong>${sender === 'user' ? 'Du' : 'LLM'}:</strong> ${message}<br><small>${timestamp}</small>`;
+            
+            messagesDiv.appendChild(messageDiv);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function clearChat() {
+            document.getElementById('chat-messages').innerHTML = '';
+            chatMessages = [];
+        }
+
+        function quickTest(message) {
+            document.getElementById('chat-input').value = message;
+            sendMessage();
+        }
+
+        async function sendMessage() {
+            const input = document.getElementById('chat-input');
+            const sendBtn = document.getElementById('send-btn');
+            const message = input.value.trim();
+            
+            if (!message) return;
+            
+            // UI Updates
+            addChatMessage(message, 'user');
+            input.value = '';
+            sendBtn.disabled = true;
+            sendBtn.textContent = 'Sende...';
+            
+            try {
+                const response = await fetch(`${API_URL}/debug/chat`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({message: message})
+                });
+                
+                const data = await response.json();
+                
+                if (data.response) {
+                    addChatMessage(data.response, 'assistant');
+                } else if (data.error) {
+                    addChatMessage(`Fehler: ${data.error}`, 'assistant', true);
+                }
+                
+            } catch (error) {
+                addChatMessage(`Verbindungsfehler: ${error.message}`, 'assistant', true);
+            } finally {
+                sendBtn.disabled = false;
+                sendBtn.textContent = 'Senden';
+                input.focus();
+            }
+        }
+
+        // Live-Logs
+        function updateLiveLogs(logs) {
+            const logsDiv = document.getElementById('live-logs');
+            logsDiv.innerHTML = logs.map(log => 
+                `<div class="log-entry log-${log.type}">[${log.timestamp}] ${log.message}</div>`
+            ).join('');
+            logsDiv.scrollTop = logsDiv.scrollHeight;
+        }
+
+        function clearLogs() {
+            document.getElementById('live-logs').innerHTML = 'Logs geleert. Warte auf neue Aktivität...';
+        }
+
+        async function fetchLiveLogs() {
+            try {
+                const response = await fetch(`${API_URL}/live-logs`);
+                const data = await response.json();
+                if (data.logs && data.logs.length > 0) {
+                    updateLiveLogs(data.logs);
+                }
+            } catch (error) {
+                // Silent fail
+            }
+        }
+
+        // Status-Checks
+        async function checkStatus() {
+            try {
+                const response = await fetch(`${API_URL}/status`);
+                if (response.ok) {
+                    document.getElementById('api-status').className = 'status-indicator status-online';
+                    document.getElementById('api-text').textContent = 'API: Online';
+                }
+            } catch (error) {
+                document.getElementById('api-status').className = 'status-indicator status-offline';
+                document.getElementById('api-text').textContent = 'API: Offline';
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/test-llm`);
+                const data = await response.json();
+                if (data.status === 'LLM connection successful') {
+                    document.getElementById('llm-status').className = 'status-indicator status-online';
+                    document.getElementById('llm-text').textContent = 'LLM: Online';
+                } else {
+                    document.getElementById('llm-status').className = 'status-indicator status-offline';
+                    document.getElementById('llm-text').textContent = 'LLM: Fallback';
+                }
+            } catch (error) {
+                document.getElementById('llm-status').className = 'status-indicator status-offline';
+                document.getElementById('llm-text').textContent = 'LLM: Error';
+            }
+        }
+
+        // Initialisierung
+        document.addEventListener('DOMContentLoaded', () => {
+            checkStatus();
+            
+            // Live-Logs alle 2 Sekunden aktualisieren
+            setInterval(fetchLiveLogs, 2000);
+            
+            // Status alle 10 Sekunden prüfen
+            setInterval(checkStatus, 10000);
+            
+            // Chat-Input fokussieren
+            document.getElementById('chat-input').focus();
+        });
+    </script>
+</body>
+</html>

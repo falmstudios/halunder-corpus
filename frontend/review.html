@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Halunder Corpus - Review & Export</title>
+    <link rel="stylesheet" href="/static/styles.css">
+    <style>
+        /* Review specific styles */
+        .review-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .controls-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .filter-bar {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .column-toggles {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            padding-top: 15px;
+            border-top: 1px solid #e0e0e0;
+        }
+
+        .column-toggle {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        .filter-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 8px;
+            overflow: auto;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+            max-height: 600px;
+        }
+
+        .review-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .review-table th {
+            background-color: #f8f9fa;
+            padding: 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #2c3e50;
+            border-bottom: 2px solid #e0e0e0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            cursor: pointer;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        .review-table th:hover {
+            background-color: #e9ecef;
+        }
+
+        .review-table th.sortable::after {
+            content: ' ↕';
+            opacity: 0.3;
+        }
+
+        .review-table th.sorted-asc::after {
+            content: ' ↑';
+            opacity: 1;
+        }
+
+        .review-table th.sorted-desc::after {
+            content: ' ↓';
+            opacity: 1;
+        }
+
+        .review-table td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #e0e0e0;
+            vertical-align: top;
+            max-width: 300px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .review-table tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        .confidence-cell {
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .confidence-high { color: #27ae60; }
+        .confidence-medium { color: #f39c12; }
+        .confidence-low { color: #e74c3c; }
+
+        .edit-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9em;
+        }
+
+        .edit-btn:hover {
+            background: #2980b9;
+        }
+
+        .empty-cell {
+            color: #999;
+            font-style: italic;
+        }
+
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-top: 20px;
+        }
+
+        /* Modal styles */
+        .modal {
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal.hidden {
+            display: none;
+        }
+
+        .modal-content {
+            background-color: white;
+            padding: 30px;
+            border-radius: 8px;
+            width: 90%;
+            max-width: 800px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        .close {
+            position: absolute;
+            right: 20px;
+            top: 20px;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+            color: #999;
+        }
+
+        .close:hover {
+            color: #333;
+        }
+
+        .modal-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .modal-full {
+            grid-column: 1 / -1;
+        }
+
+        .modal textarea, .modal input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        .btn-danger {
+            background-color: #e74c3c;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        .btn-danger:hover {
+            background-color: #c0392b;
+        }
+
+        .hidden-column {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <nav class="main-nav">
+        <div class="nav-container">
+            <h1 class="nav-title">Halunder Corpus System</h1>
+            <div class="nav-links">
+                <a href="/" class="nav-link">Textverarbeitung</a>
+                <a href="/review" class="nav-link active">Review & Export</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="review-header">
+            <h2>Satzpaare Review & Export</h2>
+            <button id="export-btn" class="btn-primary">CSV Exportieren</button>
+        </div>
+
+        <div class="controls-section">
+            <div class="filter-bar">
+                <div class="filter-item">
+                    <label>Min. Confidence:</label>
+                    <select id="confidence-filter">
+                        <option value="0">Alle</option>
+                        <option value="50">≥ 50%</option>
+                        <option value="70">≥ 70%</option>
+                        <option value="90">≥ 90%</option>
+                    </select>
+                </div>
+                <div class="filter-item">
+                    <label>Quelle:</label>
+                    <input type="text" id="source-filter" placeholder="Filter nach Quelle...">
+                </div>
+                <div class="filter-item">
+                    <label>
+                        <input type="checkbox" id="incomplete-filter">
+                        Nur unvollständige
+                    </label>
+                </div>
+                <button id="apply-filters" class="btn-secondary">Filter anwenden</button>
+                <button id="reset-filters" class="btn-secondary">Zurücksetzen</button>
+            </div>
+            
+            <div class="column-toggles">
+                <strong>Spalten anzeigen:</strong>
+                <label class="column-toggle">
+                    <input type="checkbox" data-column="halunder" checked>
+                    Halunder
+                </label>
+                <label class="column-toggle">
+                    <input type="checkbox" data-column="german" checked>
+                    Deutsch
+                </label>
+                <label class="column-toggle">
+                    <input type="checkbox" data-column="confidence" checked>
+                    Confidence
+                </label>
+                <label class="column-toggle">
+                    <input type="checkbox" data-column="reasoning" checked>
+                    Reasoning
+                </label>
+                <label class="column-toggle">
+                    <input type="checkbox" data-column="source_title" checked>
+                    Quelle
+                </label>
+                <label class="column-toggle">
+                    <input type="checkbox" data-column="source_author">
+                    Autor
+                </label>
+                <label class="column-toggle">
+                    <input type="checkbox" data-column="source_page">
+                    Seite
+                </label>
+                <label class="column-toggle">
+                    <input type="checkbox" data-column="added_by">
+                    Hinzugefügt von
+                </label>
+                <label class="column-toggle">
+                    <input type="checkbox" data-column="created_at">
+                    Datum
+                </label>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table class="review-table">
+                <thead>
+                    <tr>
+                        <th>Nr.</th>
+                        <th class="sortable" data-sort="halunder_text" data-column="halunder">Halunder</th>
+                        <th class="sortable" data-sort="german_text" data-column="german">Deutsch</th>
+                        <th class="sortable" data-sort="match_confidence" data-column="confidence">Conf.</th>
+                        <th class="sortable" data-sort="reasoning" data-column="reasoning">Reasoning</th>
+                        <th class="sortable" data-sort="source_title" data-column="source_title">Quelle</th>
+                        <th class="sortable hidden-column" data-sort="source_author" data-column="source_author">Autor</th>
+                        <th class="sortable hidden-column" data-sort="source_page" data-column="source_page">Seite</th>
+                        <th class="sortable hidden-column" data-sort="added_by" data-column="added_by">Hinzugefügt von</th>
+                        <th class="sortable hidden-column" data-sort="created_at" data-column="created_at">Datum</th>
+                        <th>Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody id="sentences-tbody">
+                    <!-- Sentences will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+
+        <div class="pagination">
+            <button id="prev-page" class="btn-secondary" disabled>← Zurück</button>
+            <span id="page-info">Lade...</span>
+            <button id="next-page" class="btn-secondary">Weiter →</button>
+        </div>
+    </div>
+
+    <!-- Edit Modal -->
+    <div id="edit-modal" class="modal hidden">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2>Satzpaar bearbeiten</h2>
+            
+            <div class="modal-grid">
+                <div class="form-group modal-full">
+                    <label>Halunder:</label>
+                    <textarea id="modal-halunder" rows="3"></textarea>
+                </div>
+                
+                <div class="form-group modal-full">
+                    <label>Deutsch:</label>
+                    <textarea id="modal-german" rows="3"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Confidence (%):</label>
+                    <input type="number" id="modal-confidence" min="0" max="100" step="5">
+                </div>
+                
+                <div class="form-group">
+                    <label>Ist Idiom:</label>
+                    <select id="modal-is-idiom">
+                        <option value="false">Nein</option>
+                        <option value="true">Ja</option>
+                    </select>
+                </div>
+                
+                <div class="form-group modal-full">
+                    <label>LLM Reasoning:</label>
+                    <textarea id="modal-reasoning" rows="4" placeholder="Begründung für das Matching..."></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Quelle/Titel:</label>
+                    <input type="text" id="modal-source-title">
+                </div>
+                
+                <div class="form-group">
+                    <label>Autor:</label>
+                    <input type="text" id="modal-source-author">
+                </div>
+                
+                <div class="form-group">
+                    <label>Seite:</label>
+                    <input type="text" id="modal-source-page">
+                </div>
+                
+                <div class="form-group">
+                    <label>Hinzugefügt von:</label>
+                    <input type="text" id="modal-added-by" readonly style="background-color: #f8f9fa;">
+                </div>
+            </div>
+            
+            <div class="modal-buttons">
+                <button id="save-changes" class="btn-primary">Speichern</button>
+                <button id="delete-sentence" class="btn-danger">Löschen</button>
+                <button id="cancel-edit" class="btn-secondary">Abbrechen</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Review functionality
+        const API_URL = '/api';
+        let allSentences = [];
+        let filteredSentences = [];
+        let currentPage = 1;
+        const itemsPerPage = 50;
+        let currentEditId = null;
+        let sortColumn = null;
+        let sortDirection = 'asc';
+
+        document.addEventListener('DOMContentLoaded', async () => {
+            await loadAllSentences();
+            setupEventListeners();
+        });
+
+        function setupEventListeners() {
+            // Filters
+            document.getElementById('apply-filters').addEventListener('click', applyFilters);
+            document.getElementById('reset-filters').addEventListener('click', resetFilters);
+            
+            // Pagination
+            document.getElementById('prev-page').addEventListener('click', () => changePage(-1));
+            document.getElementById('next-page').addEventListener('click', () => changePage(1));
+            
+            // Export
+            document.getElementById('export-btn').addEventListener('click', exportCSV);
+            
+            // Modal
+            document.querySelector('.close').addEventListener('click', closeModal);
+            document.getElementById('save-changes').addEventListener('click', saveChanges);
+            document.getElementById('delete-sentence').addEventListener('click', deleteSentence);
+            document.getElementById('cancel-edit').addEventListener('click', closeModal);
+            
+            // Column toggles
+            document.querySelectorAll('.column-toggle input').forEach(checkbox => {
+                checkbox.addEventListener('change', toggleColumn);
+            });
+            
+            // Sort headers
+            document.querySelectorAll('.sortable').forEach(th => {
+                th.addEventListener('click', () => sortTable(th.dataset.sort));
+            });
+        }
+
+        async function loadAllSentences() {
+            try {
+                const response = await fetch(`${API_URL}/all-sentences`);
+                const data = await response.json();
+                allSentences = data.sentences;
+                filteredSentences = [...allSentences];
+                displaySentences();
+            } catch (error) {
+                console.error('Error loading sentences:', error);
+                alert('Fehler beim Laden der Sätze');
+            }
+        }
+
+        function displaySentences() {
+            const tbody = document.getElementById('sentences-tbody');
+            tbody.innerHTML = '';
+            
+            const start = (currentPage - 1) * itemsPerPage;
+            const end = start + itemsPerPage;
+            const pageSentences = filteredSentences.slice(start, end);
+            
+            pageSentences.forEach((sentence, index) => {
+                const row = document.createElement('tr');
+                const confidence = Math.round((sentence.match_confidence || 0) * 100);
+                const confidenceClass = confidence >= 80 ? 'confidence-high' : 
+                                      confidence >= 50 ? 'confidence-medium' : 'confidence-low';
+                
+                const createdDate = sentence.created_at ? new Date(sentence.created_at).toLocaleDateString('de-DE') : '-';
+                
+                row.innerHTML = `
+                    <td>${start + index + 1}</td>
+                    <td data-column="halunder" class="${!sentence.halunder_text ? 'empty-cell' : ''}">
+                        ${sentence.halunder_text || '(leer)'}
+                    </td>
+                    <td data-column="german" class="${!sentence.german_text ? 'empty-cell' : ''}">
+                        ${sentence.german_text || '(leer)'}
+                    </td>
+                    <td data-column="confidence" class="confidence-cell ${confidenceClass}">
+                        ${confidence}%
+                    </td>
+                    <td data-column="reasoning">${sentence.reasoning || '-'}</td>
+                    <td data-column="source_title">${sentence.source_title || '-'}</td>
+                    <td data-column="source_author" class="hidden-column">${sentence.source_author || '-'}</td>
+                    <td data-column="source_page" class="hidden-column">${sentence.source_page || '-'}</td>
+                    <td data-column="added_by" class="hidden-column">${sentence.added_by || '-'}</td>
+                    <td data-column="created_at" class="hidden-column">${createdDate}</td>
+                    <td>
+                        <button class="edit-btn" onclick="editSentence('${sentence.id}')">
+                            Bearbeiten
+                        </button>
+                    </td>
+                `;
+                
+                tbody.appendChild(row);
+            });
+            
+            updatePagination();
+        }
+
+        function updatePagination() {
+            const totalPages = Math.ceil(filteredSentences.length / itemsPerPage);
+            document.getElementById('page-info').textContent = 
+                `Seite ${currentPage} von ${totalPages} (${filteredSentences.length} Einträge)`;
+            
+            document.getElementById('prev-page').disabled = currentPage === 1;
+            document.getElementById('next-page').disabled = currentPage === totalPages || totalPages === 0;
+        }
+
+        function changePage(direction) {
+            currentPage += direction;
+            displaySentences();
+        }
+
+        function applyFilters() {
+            const minConfidence = parseInt(document.getElementById('confidence-filter').value);
+            const sourceFilter = document.getElementById('source-filter').value.toLowerCase();
+            const incompleteOnly = document.getElementById('incomplete-filter').checked;
+            
+            filteredSentences = allSentences.filter(sentence => {
+                if ((sentence.match_confidence || 0) * 100 < minConfidence) return false;
+                if (sourceFilter && !(sentence.source_title || '').toLowerCase().includes(sourceFilter)) {
+                    return false;
+                }
+                if (incompleteOnly && sentence.halunder_text && sentence.german_text) {
+                    return false;
+                }
+                return true;
+            });
+            
+            currentPage = 1;
+            displaySentences();
+        }
+
+        function resetFilters() {
+            document.getElementById('confidence-filter').value = '0';
+            document.getElementById('source-filter').value = '';
+            document.getElementById('incomplete-filter').checked = false;
+            filteredSentences = [...allSentences];
+            currentPage = 1;
+            displaySentences();
+        }
+
+        function toggleColumn(event) {
+            const column = event.target.dataset.column;
+            const show = event.target.checked;
+            
+            // Toggle header
+            document.querySelector(`th[data-column="${column}"]`).classList.toggle('hidden-column', !show);
+            
+            // Toggle cells
+            document.querySelectorAll(`td[data-column="${column}"]`).forEach(td => {
+                td.classList.toggle('hidden-column', !show);
+            });
+        }
+
+        function sortTable(column) {
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+            
+            // Update header classes
+            document.querySelectorAll('.sortable').forEach(th => {
+                th.classList.remove('sorted-asc', 'sorted-desc');
+            });
+            const currentTh = document.querySelector(`th[data-sort="${column}"]`);
+            currentTh.classList.add(sortDirection === 'asc' ? 'sorted-asc' : 'sorted-desc');
+            
+            // Sort data
+            filteredSentences.sort((a, b) => {
+                let aVal = a[column] || '';
+                let bVal = b[column] || '';
+                
+                // Handle numeric values
+                if (column === 'match_confidence') {
+                    aVal = a[column] || 0;
+                    bVal = b[column] || 0;
+                }
+                
+                if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+            
+            currentPage = 1;
+            displaySentences();
+        }
+
+        function editSentence(sentenceId) {
+            currentEditId = sentenceId;
+            const sentence = allSentences.find(s => s.id === sentenceId);
+            
+            if (sentence) {
+                document.getElementById('modal-halunder').value = sentence.halunder_text || '';
+                document.getElementById('modal-german').value = sentence.german_text || '';
+                document.getElementById('modal-confidence').value = Math.round((sentence.match_confidence || 0) * 100);
+                document.getElementById('modal-reasoning').value = sentence.reasoning || '';
+                document.getElementById('modal-is-idiom').value = sentence.is_idiom ? 'true' : 'false';
+                document.getElementById('modal-source-title').value = sentence.source_title || '';
+                document.getElementById('modal-source-author').value = sentence.source_author || '';
+                document.getElementById('modal-source-page').value = sentence.source_page || '';
+                document.getElementById('modal-added-by').value = sentence.added_by || '';
+                
+                document.getElementById('edit-modal').classList.remove('hidden');
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('edit-modal').classList.add('hidden');
+            currentEditId = null;
+        }
+
+        async function saveChanges() {
+            if (!currentEditId) return;
+            
+            const updateData = {
+                halunder_text: document.getElementById('modal-halunder').value || null,
+                german_text: document.getElementById('modal-german').value || null,
+                match_confidence: parseFloat(document.getElementById('modal-confidence').value) / 100,
+                reasoning: document.getElementById('modal-reasoning').value || "",
+                is_idiom: document.getElementById('modal-is-idiom').value === 'true'
+            };
+            
+            // Remove empty values to avoid database issues
+            Object.keys(updateData).forEach(key => {
+                if (updateData[key] === "" || updateData[key] === null) {
+                    if (key !== 'reasoning') { // Keep reasoning even if empty
+                        delete updateData[key];
+                    }
+                }
+            });
+            
+            try {
+                console.log('Sending update data:', updateData); // Debug log
+                
+                const response = await fetch(`${API_URL}/sentences/${currentEditId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(updateData)
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+                
+                const result = await response.json();
+                console.log('Update result:', result); // Debug log
+                
+                if (result.success) {
+                    const sentence = allSentences.find(s => s.id === currentEditId);
+                    if (sentence) {
+                        Object.assign(sentence, updateData);
+                        // Update reasoning specifically
+                        sentence.reasoning = updateData.reasoning;
+                    }
+                    closeModal();
+                    displaySentences();
+                    
+                    // Show success message
+                    const msg = document.createElement('div');
+                    msg.className = 'success-message';
+                    msg.textContent = 'Änderungen gespeichert!';
+                    msg.style.cssText = 'position:fixed;top:20px;right:20px;z-index:1001;background:#27ae60;color:white;padding:15px;border-radius:4px;';
+                    document.body.appendChild(msg);
+                    setTimeout(() => msg.remove(), 3000);
+                } else {
+                    throw new Error('Server returned success=false');
+                }
+            } catch (error) {
+                console.error('Save error:', error);
+                alert('Fehler beim Speichern: ' + error.message);
+            }
+        }
+
+        async function deleteSentence() {
+            if (!currentEditId) return;
+            
+            if (!confirm('Möchten Sie dieses Satzpaar wirklich löschen?')) return;
+            
+            try {
+                const response = await fetch(`${API_URL}/sentences/${currentEditId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    allSentences = allSentences.filter(s => s.id !== currentEditId);
+                    filteredSentences = filteredSentences.filter(s => s.id !== currentEditId);
+                    closeModal();
+                    displaySentences();
+                    alert('Satzpaar gelöscht!');
+                } else {
+                    throw new Error('Löschen fehlgeschlagen');
+                }
+            } catch (error) {
+                alert('Fehler beim Löschen: ' + error.message);
+            }
+        }
+
+        async function exportCSV() {
+            try {
+                const exportBtn = document.getElementById('export-btn');
+                exportBtn.textContent = 'Exportiere...';
+                exportBtn.disabled = true;
+                
+                const response = await fetch(`${API_URL}/export`);
+                const blob = await response.blob();
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `halunder_corpus_${new Date().toISOString().slice(0,10)}.csv`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                window.URL.revokeObjectURL(url);
+            } catch (error) {
+                alert('Export fehlgeschlagen: ' + error.message);
+            } finally {
+                const exportBtn = document.getElementById('export-btn');
+                exportBtn.textContent = 'CSV Exportieren';
+                exportBtn.disabled = false;
+            }
+        }
+
+        window.editSentence = editSentence;
+    </script>
+</body>
+</html>
